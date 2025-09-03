@@ -1,18 +1,19 @@
 import smartsheet
+import os
 
-
-# Replace with your actual API token
+# Get the token from environment variable
 ACCESS_TOKEN = os.getenv("SMARTSHEET_TOKEN")
+
+if not ACCESS_TOKEN:
+    print("Error: SMARTSHEET_TOKEN not found in environment variables.")
+    exit(1)
 
 # Initialize the Smartsheet client
 smartsheet_client = smartsheet.Smartsheet(ACCESS_TOKEN)
 
 # Replace with your actual sheet IDs
-SOURCE_SHEET_ID = 'hP678C6c64PRfjJrQHpmq92HQWMFWqVhcJJXF3J1'  # Approval of NSI row update data
-TARGET_SHEET_ID = '2pgPfFrWJwCxM386gQgr68HvXwPC36fr3QXFj2Q1'  # Approval of NSI
-
-# Initialize Smartsheet client
-smartsheet_client = smartsheet.Smartsheet(ACCESS_TOKEN)
+SOURCE_SHEET_ID = 'hP678C6c64PRfjJrQHpmq92HQWMFWqVhcJJXF3J1'
+TARGET_SHEET_ID = '2pgPfFrWJwCxM386gQgr68HvXwPC36fr3QXFj2Q1'
 
 # Get both sheets
 source_sheet = smartsheet_client.Sheets.get_sheet(SOURCE_SHEET_ID)
@@ -51,7 +52,6 @@ columns_to_update = [
 rows_to_update = []
 
 for source_row in source_sheet.rows:
-    # Get NSI Number from source row
     nsi_number = None
     for cell in source_row.cells:
         if cell.column_id == source_columns['NSI Number']:
@@ -69,7 +69,6 @@ for source_row in source_sheet.rows:
                 'value': source_value
             })
 
-        # Apply updates to the target row
         for cell_data in updated_cells:
             cell = smartsheet.models.Cell()
             cell.column_id = cell_data['column_id']
@@ -83,5 +82,8 @@ if rows_to_update:
     response = smartsheet_client.Sheets.update_rows(TARGET_SHEET_ID, rows_to_update)
     print(f"Updated {len(response.data)} rows.")
 else:
-
     print("No matching rows found to update.")
+
+# Allow script to run directly
+if __name__ == "__main__":
+    pass  # Already runs when executed
