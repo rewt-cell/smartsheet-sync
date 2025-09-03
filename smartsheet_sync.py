@@ -1,86 +1,87 @@
 import smartsheet
 
-def lambda_handler(event, context):
-    # Replace with your actual API token
-    ACCESS_TOKEN = 'mX62ZzABHeF9yj5hx9hBXRYGTB06BSfwxy7G7'
 
-    # Initialize the Smartsheet client
-    smartsheet_client = smartsheet.Smartsheet(ACCESS_TOKEN)
+# Replace with your actual API token
+ACCESS_TOKEN = os.getenv("SMARTSHEET_TOKEN")
 
-    # Replace with your actual sheet IDs
-    SOURCE_SHEET_ID = 'hP678C6c64PRfjJrQHpmq92HQWMFWqVhcJJXF3J1'  # Approval of NSI row update data
-    TARGET_SHEET_ID = '2pgPfFrWJwCxM386gQgr68HvXwPC36fr3QXFj2Q1'  # Approval of NSI
+# Initialize the Smartsheet client
+smartsheet_client = smartsheet.Smartsheet(ACCESS_TOKEN)
 
-    # Initialize Smartsheet client
-    smartsheet_client = smartsheet.Smartsheet(ACCESS_TOKEN)
+# Replace with your actual sheet IDs
+SOURCE_SHEET_ID = 'hP678C6c64PRfjJrQHpmq92HQWMFWqVhcJJXF3J1'  # Approval of NSI row update data
+TARGET_SHEET_ID = '2pgPfFrWJwCxM386gQgr68HvXwPC36fr3QXFj2Q1'  # Approval of NSI
 
-    # Get both sheets
-    source_sheet = smartsheet_client.Sheets.get_sheet(SOURCE_SHEET_ID)
-    target_sheet = smartsheet_client.Sheets.get_sheet(TARGET_SHEET_ID)
+# Initialize Smartsheet client
+smartsheet_client = smartsheet.Smartsheet(ACCESS_TOKEN)
 
-    # Map column names to IDs for both sheets
-    def get_column_map(sheet):
-        return {col.title: col.id for col in sheet.columns}
+# Get both sheets
+source_sheet = smartsheet_client.Sheets.get_sheet(SOURCE_SHEET_ID)
+target_sheet = smartsheet_client.Sheets.get_sheet(TARGET_SHEET_ID)
 
-    source_columns = get_column_map(source_sheet)
-    target_columns = get_column_map(target_sheet)
+# Map column names to IDs for both sheets
+def get_column_map(sheet):
+    return {col.title: col.id for col in sheet.columns}
 
-    # Build a lookup for NSI Number in target sheet
-    target_lookup = {}
-    for row in target_sheet.rows:
-        for cell in row.cells:
-            if cell.column_id == target_columns['NSI Number']:
-                target_lookup[cell.value] = row
-                break
+source_columns = get_column_map(source_sheet)
+target_columns = get_column_map(target_sheet)
 
-    # Columns to update
-    columns_to_update = [
-        "Customer Name",
-        "Expected no. of units in the next 6 months",
-        "Software/firmware Version",
-        "Transfer Region",
-        "Transfer Region Owners",
-        "Order/Forecast in place",
-        "Expected delivery date of first unit/batch/pilot",
-        "Comments from requestor",
-        "Comments from Sergio",
-        "Last Amendment Date"
-    ]
+# Build a lookup for NSI Number in target sheet
+target_lookup = {}
+for row in target_sheet.rows:
+    for cell in row.cells:
+        if cell.column_id == target_columns['NSI Number']:
+            target_lookup[cell.value] = row
+            break
 
-    # Prepare rows to update
-    rows_to_update = []
+# Columns to update
+columns_to_update = [
+    "Customer Name",
+    "Expected no. of units in the next 6 months",
+    "Software/firmware Version",
+    "Transfer Region",
+    "Transfer Region Owners",
+    "Order/Forecast in place",
+    "Expected delivery date of first unit/batch/pilot",
+    "Comments from requestor",
+    "Comments from Sergio",
+    "Last Amendment Date"
+]
 
-    for source_row in source_sheet.rows:
-        # Get NSI Number from source row
-        nsi_number = None
-        for cell in source_row.cells:
-            if cell.column_id == source_columns['NSI Number']:
-                nsi_number = cell.value
-                break
+# Prepare rows to update
+rows_to_update = []
 
-        if nsi_number and nsi_number in target_lookup:
-            target_row = target_lookup[nsi_number]
-            updated_cells = []
+for source_row in source_sheet.rows:
+    # Get NSI Number from source row
+    nsi_number = None
+    for cell in source_row.cells:
+        if cell.column_id == source_columns['NSI Number']:
+            nsi_number = cell.value
+            break
 
-            for col_name in columns_to_update:
-                source_value = next((c.value for c in source_row.cells if c.column_id == source_columns[col_name]), None)
-                updated_cells.append({
-                    'column_id': target_columns[col_name],
-                    'value': source_value
-                })
+    if nsi_number and nsi_number in target_lookup:
+        target_row = target_lookup[nsi_number]
+        updated_cells = []
 
-            # Apply updates to the target row
-            for cell_data in updated_cells:
-                cell = smartsheet.models.Cell()
-                cell.column_id = cell_data['column_id']
-                cell.value = cell_data['value']
-                target_row.cells.append(cell)
+        for col_name in columns_to_update:
+            source_value = next((c.value for c in source_row.cells if c.column_id == source_columns[col_name]), None)
+            updated_cells.append({
+                'column_id': target_columns[col_name],
+                'value': source_value
+            })
 
-            rows_to_update.append(target_row)
+        # Apply updates to the target row
+        for cell_data in updated_cells:
+            cell = smartsheet.models.Cell()
+            cell.column_id = cell_data['column_id']
+            cell.value = cell_data['value']
+            target_row.cells.append(cell)
 
-    # Push updates to Smartsheet
-    if rows_to_update:
-        response = smartsheet_client.Sheets.update_rows(TARGET_SHEET_ID, rows_to_update)
-        print(f"Updated {len(response.data)} rows.")
-    else:
-        print("No matching rows found to update.")
+        rows_to_update.append(target_row)
+
+# Push updates to Smartsheet
+if rows_to_update:
+    response = smartsheet_client.Sheets.update_rows(TARGET_SHEET_ID, rows_to_update)
+    print(f"Updated {len(response.data)} rows.")
+else:
+
+    print("No matching rows found to update.")
