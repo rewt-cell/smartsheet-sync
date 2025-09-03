@@ -54,37 +54,8 @@ rows_to_update = []
 for source_row in source_sheet.rows:
     nsi_number = None
     for cell in source_row.cells:
-        if cell.column_id == source_columns['NSI Number']:
+        if cell.column_id == source_columns.get('NSI Number'):
             nsi_number = cell.value
             break
 
     if nsi_number and nsi_number in target_lookup:
-        target_row = target_lookup[nsi_number]
-        updated_cells = []
-
-        for col_name in columns_to_update:
-            source_value = next((c.value for c in source_row.cells if c.column_id == source_columns[col_name]), None)
-            updated_cells.append({
-                'column_id': target_columns[col_name],
-                'value': source_value
-            })
-
-        for cell_data in updated_cells:
-            cell = smartsheet.models.Cell()
-            cell.column_id = cell_data['column_id']
-            cell.value = cell_data['value']
-            target_row.cells.append(cell)
-
-        rows_to_update.append(target_row)
-
-# Push updates to Smartsheet
-if rows_to_update:
-    response = smartsheet_client.Sheets.update_rows(TARGET_SHEET_ID, rows_to_update)
-    print(f"Updated {len(response.data)} rows.")
-else:
-    print("No matching rows found to update.")
-
-# Allow script to run directly
-if __name__ == "__main__":
-    pass  # Already runs when executed
-
