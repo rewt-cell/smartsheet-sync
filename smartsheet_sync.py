@@ -30,7 +30,7 @@ target_columns = get_column_map(target_sheet)
 target_lookup = {}
 for row in target_sheet.rows:
     for cell in row.cells:
-        if cell.column_id == target_columns['NSI Number']:
+        if cell.column_id == target_columns.get('NSI Number'):
             target_lookup[cell.value] = row
             break
 
@@ -68,32 +68,34 @@ for source_row in source_sheet.rows:
                 continue
 
             source_value = next((c.value for c in source_row.cells if c.column_id == source_columns[col_name]), None)
-            updated_cells.append({
-                'column_id': target_columns[col_name],
-                'value': source_value
-            })
 
-        updated_row = smartsheet.models.Row()
-        updated_row.id = target_row.id
-        updated_row.cells = []
+            if source_value is not None:
+                updated_cells.append({
+                    'column_id': target_columns[col_name],
+                    'value': source_value
+                })
 
-        for cell_data in updated_cells:
-            cell = smartsheet.models.Cell()
-            cell.column_id = cell_data['column_id']
-            cell.value = cell_data['value']
-            updated_row.cells.append(cell)
+        if updated_cells:
+            updated_row = smartsheet.models.Row()
+            updated_row.id = target_row.id
+            updated_row.cells = []
 
-        rows_to_update.append(updated_row)
+            for cell_data in updated_cells:
+                cell = smartsheet.models.Cell()
+                cell.column_id = cell_data['column_id']
+                cell.value = cell_data['value']
+                updated_row.cells.append(cell)
+
+            rows_to_update.append(updated_row)
 
 print(f"Prepared {len(rows_to_update)} rows for update.")
 
 # Push updates to Smartsheet
 try:
     response = smartsheet_client.Sheets.update_rows(TARGET_SHEET_ID, rows_to_update)
-    print(f"Updated {len(response.data)} rows.")
+    if hasattr(response, 'data'):
+        print(f"Updated {len(response.data)} rows.")
+    else:
+        print("Update response did not contain data.")
 except Exception as e:
     print("Smartsheet update failed:", e)
-
-# Allow script to run directly
-if __name__ == "__main__":
-    pass
